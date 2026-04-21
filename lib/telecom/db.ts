@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import type {
   DashboardSnapshot,
@@ -15,7 +16,7 @@ import type {
 import { buildSeedDataset } from "./seed";
 
 const DB_VERSION = 8;
-const DB_DIR = path.join(process.cwd(), ".data");
+const DB_DIR = process.env.TELECOM_DB_DIR ?? path.join(os.tmpdir(), "aitelecomexpense");
 const DB_FILE = path.join(DB_DIR, "telecom-optimization.duckdb");
 
 type DatabaseHandle = {

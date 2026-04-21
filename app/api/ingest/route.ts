@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import * as XLSX from "xlsx";
 import { getDashboardSnapshot, resetDatabaseCache } from "@/lib/telecom/db";
@@ -104,7 +105,7 @@ function parseInvoicesPdf(text: string) {
 }
 
 async function getConnection() {
-  const dbDir = path.join(process.cwd(), ".data");
+  const dbDir = process.env.TELECOM_DB_DIR ?? path.join(os.tmpdir(), "aitelecomexpense");
   fs.mkdirSync(dbDir, { recursive: true });
   const duckdb = await import("duckdb");
   const db = new duckdb.Database(path.join(dbDir, "telecom-optimization.duckdb"));
