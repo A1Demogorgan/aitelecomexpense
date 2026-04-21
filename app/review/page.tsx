@@ -3,10 +3,8 @@ import { getDashboardSnapshot } from "@/lib/telecom/db";
 
 export const runtime = "nodejs";
 
-export default async function Home() {
+export default async function ReviewPage() {
   const snapshot = await getDashboardSnapshot();
 
-  return (
-    <TelecomDashboard snapshot={snapshot} view="executive" />
-  );
+  return <TelecomDashboard snapshot={snapshot} view="review" />;
 }

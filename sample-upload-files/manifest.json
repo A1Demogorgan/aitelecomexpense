@@ -1,0 +1,25 @@
+{
+  "root": "/Users/sriramvenkatakrishnan/Documents/TEM/aitelecomexpense/sample-upload-files",
+  "contracts": [
+    "contracts/CTR-001.pdf",
+    "contracts/CTR-002.pdf",
+    "contracts/CTR-003.pdf",
+    "contracts/CTR-004.pdf",
+    "contracts/CTR-005.pdf",
+    "contracts/CTR-006.pdf",
+    "contracts/CTR-007.pdf",
+    "contracts/CTR-008.pdf",
+    "contracts/CTR-009.pdf",
+    "contracts/CTR-010.pdf"
+  ],
+  "invoices": [
+    "invoices/invoice_batch_01.pdf",
+    "invoices/invoice_batch_02.pdf",
+    "invoices/invoice_batch_03.pdf",
+    "invoices/invoice_batch_04.pdf",
+    "invoices/invoice_batch_05.pdf"
+  ],
+  "ap": [
+    "ap/ap_records.xlsx"
+  ]
+}
