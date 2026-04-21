@@ -2,14 +2,18 @@ import { NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
 import * as XLSX from "xlsx";
-import duckdb from "duckdb";
 import { getDashboardSnapshot, resetDatabaseCache } from "@/lib/telecom/db";
 
 export const runtime = "nodejs";
 
-function run(conn: duckdb.Connection, sql: string, params: unknown[] = []) {
+type DuckDbConnection = {
+  run(sql: string, ...params: unknown[]): void;
+  close(cb?: (error?: Error | null) => void): void;
+};
+
+function run(conn: DuckDbConnection, sql: string, params: unknown[] = []) {
   return new Promise<void>((resolve, reject) => {
-    conn.run(sql, ...params, (error) => {
+    conn.run(sql, ...params, (error: unknown) => {
       if (error) {
         reject(error);
         return;
@@ -102,6 +106,7 @@ function parseInvoicesPdf(text: string) {
 async function getConnection() {
   const dbDir = path.join(process.cwd(), ".data");
   fs.mkdirSync(dbDir, { recursive: true });
+  const duckdb = await import("duckdb");
   const db = new duckdb.Database(path.join(dbDir, "telecom-optimization.duckdb"));
   return db.connect();
 }

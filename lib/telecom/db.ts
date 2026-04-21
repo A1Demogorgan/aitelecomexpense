@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import duckdb from "duckdb";
 import type {
   DashboardSnapshot,
   BenchmarkServiceDetail,
@@ -20,20 +19,41 @@ const DB_DIR = path.join(process.cwd(), ".data");
 const DB_FILE = path.join(DB_DIR, "telecom-optimization.duckdb");
 
 type DatabaseHandle = {
-  db: duckdb.Database;
-  conn: duckdb.Connection;
+  db: DuckDbDatabase;
+  conn: DuckDbConnection;
 };
 
 let initPromise: Promise<DatabaseHandle> | null = null;
 
-function openDb() {
+type DuckDbDatabase = {
+  connect(): DuckDbConnection;
+  close(cb?: (error?: Error | null) => void): void;
+};
+
+type DuckDbConnection = {
+  run(sql: string, ...params: unknown[]): void;
+  all(sql: string, ...params: unknown[]): void;
+  prepare(sql: string): {
+    run(...params: unknown[]): void;
+    finalize(cb?: (error?: Error | null) => void): void;
+  };
+  close(cb?: (error?: Error | null) => void): void;
+};
+
+async function loadDuckDb(): Promise<{ Database: new (file: string) => DuckDbDatabase }> {
+  const mod = await import("duckdb");
+  return mod as unknown as { Database: new (file: string) => DuckDbDatabase };
+}
+
+async function openDb() {
+  const duckdb = await loadDuckDb();
   fs.mkdirSync(DB_DIR, { recursive: true });
   return new duckdb.Database(DB_FILE);
 }
 
-function run(conn: duckdb.Connection, sql: string, params: unknown[] = []) {
+function run(conn: DuckDbConnection, sql: string, params: unknown[] = []) {
   return new Promise<void>((resolve, reject) => {
-    conn.run(sql, ...params, (error) => {
+    conn.run(sql, ...params, (error: unknown) => {
       if (error) {
         reject(error);
         return;
@@ -43,9 +63,9 @@ function run(conn: duckdb.Connection, sql: string, params: unknown[] = []) {
   });
 }
 
-function all<T = Record<string, unknown>>(conn: duckdb.Connection, sql: string, params: unknown[] = []) {
+function all<T = Record<string, unknown>>(conn: DuckDbConnection, sql: string, params: unknown[] = []) {
   return new Promise<T[]>((resolve, reject) => {
-    conn.all(sql, ...params, (error, rows) => {
+    conn.all(sql, ...params, (error: unknown, rows: unknown) => {
       if (error) {
         reject(error);
         return;
@@ -55,7 +75,7 @@ function all<T = Record<string, unknown>>(conn: duckdb.Connection, sql: string, 
   });
 }
 
-async function first<T = Record<string, unknown>>(conn: duckdb.Connection, sql: string, params: unknown[] = []) {
+async function first<T = Record<string, unknown>>(conn: DuckDbConnection, sql: string, params: unknown[] = []) {
   const rows = await all<T>(conn, sql, params);
   return rows[0];
 }
@@ -105,12 +125,12 @@ function billingVarianceReason(duplicateCharge: boolean, paymentStatus: string, 
   return "Contract variance";
 }
 
-function prepareRun(conn: duckdb.Connection, sql: string) {
+function prepareRun(conn: DuckDbConnection, sql: string) {
   const stmt = conn.prepare(sql);
   return {
     run: (...params: unknown[]) =>
       new Promise<void>((resolve, reject) => {
-        stmt.run(...params, (error) => {
+        stmt.run(...params, (error: unknown) => {
           if (error) {
             reject(error);
             return;
@@ -120,7 +140,7 @@ function prepareRun(conn: duckdb.Connection, sql: string) {
       }),
     finalize: () =>
       new Promise<void>((resolve, reject) => {
-        stmt.finalize((error) => {
+        stmt.finalize((error: unknown) => {
           if (error) {
             reject(error);
             return;
@@ -179,7 +199,7 @@ async function ensureSeeded(handle: DatabaseHandle) {
     fs.unlinkSync(DB_FILE);
   }
 
-  const freshDb = openDb();
+  const freshDb = await openDb();
   const freshConn = freshDb.connect();
   handle.db = freshDb;
   handle.conn = freshConn;
@@ -588,7 +608,7 @@ async function ensureSeeded(handle: DatabaseHandle) {
 async function getHandle() {
   if (!initPromise) {
     initPromise = (async () => {
-      const db = openDb();
+      const db = await openDb();
       const conn = db.connect();
       const handle = { db, conn };
       await ensureSeeded(handle);
