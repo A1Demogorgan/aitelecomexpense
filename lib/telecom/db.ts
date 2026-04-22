@@ -18,6 +18,7 @@ import { buildSeedDataset } from "./seed";
 const DB_VERSION = 8;
 const DB_DIR = process.env.TELECOM_DB_DIR ?? path.join(os.tmpdir(), "aitelecomexpense");
 const DB_FILE = path.join(DB_DIR, "telecom-optimization.duckdb");
+const SNAPSHOT_FILE = path.join(DB_DIR, "dashboard-snapshot.json");
 
 type DatabaseHandle = {
   db: DuckDbDatabase;
@@ -623,6 +624,32 @@ export function resetDatabaseCache() {
   initPromise = null;
 }
 
+function readSnapshotCache() {
+  try {
+    if (!fs.existsSync(SNAPSHOT_FILE)) return null;
+    const raw = fs.readFileSync(SNAPSHOT_FILE, "utf8");
+    return JSON.parse(raw) as DashboardSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+export function writeSnapshotCache(snapshot: DashboardSnapshot) {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+  fs.writeFileSync(SNAPSHOT_FILE, JSON.stringify(snapshot));
+}
+
+function readEmbeddedSnapshot() {
+  try {
+    const embeddedPath = path.join(process.cwd(), "lib", "telecom", "dashboard-snapshot.json");
+    if (!fs.existsSync(embeddedPath)) return null;
+    const raw = fs.readFileSync(embeddedPath, "utf8");
+    return JSON.parse(raw) as DashboardSnapshot;
+  } catch {
+    return null;
+  }
+}
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -661,7 +688,7 @@ function buildNarrative(metrics: {
   return `The seeded media-and-telecom portfolio shows ${formatCurrency(metrics.contractSpend)} in annualized contract spend, ${formatCurrency(metrics.invoiceSpend)} in invoice spend, and ${formatCurrency(metrics.apSpend)} in AP spend. Total opportunity is ${formatCurrency(metrics.totalOpportunity)} (${Math.round(metrics.opportunityRate * 100)}% of spend), made up of ${formatCurrency(metrics.totalSavings)} in annualized savings and ${formatCurrency(metrics.totalRecovery)} in one-time recovery. ${split.join("; ")}. ${metrics.highRiskCount} high-risk findings require analyst review.`;
 }
 
-export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
+export async function getDatabaseDashboardSnapshot(): Promise<DashboardSnapshot> {
   const { conn } = await getHandle();
 
   const metricsRows = await all<{
@@ -1750,4 +1777,8 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
     ingestion_summary: ingestionSummary,
     admin_summary: adminSummary,
   };
+}
+
+export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
+  return readSnapshotCache() ?? readEmbeddedSnapshot() ?? getDatabaseDashboardSnapshot();
 }

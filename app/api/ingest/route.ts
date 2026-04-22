@@ -3,7 +3,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as XLSX from "xlsx";
-import { getDashboardSnapshot, resetDatabaseCache } from "@/lib/telecom/db";
+import {
+  getDatabaseDashboardSnapshot,
+  resetDatabaseCache,
+  writeSnapshotCache,
+} from "@/lib/telecom/db";
 
 export const runtime = "nodejs";
 
@@ -237,7 +241,8 @@ export async function POST(request: Request) {
 
     await run(conn, "COMMIT");
     resetDatabaseCache();
-    const snapshot = await getDashboardSnapshot();
+    const snapshot = await getDatabaseDashboardSnapshot();
+    writeSnapshotCache(snapshot);
 
     return NextResponse.json({
       ok: true,
